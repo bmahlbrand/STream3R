@@ -1,0 +1,60 @@
+{
+  "name": "vipe-jam-dev",
+  "build": {
+    "dockerfile": "../Dockerfile",
+    "context": "..",
+    "args": {
+      "USER_NAME": "app",
+      "UID": "1000",
+      "GID": "1000",
+      "VIPE_REF": "main"
+    }
+  },
+  "remoteUser": "app",
+  "runArgs": [
+    "--gpus", "all",
+    "--shm-size=16g"
+  ],
+  "containerEnv": {
+    "PYTHONUNBUFFERED": "1",
+    "FORCE_CUDA": "1",
+    "PIP_NO_CACHE_DIR": "1"
+  },
+  "mounts": [
+    "source=${localWorkspaceFolder}/../cod-playlist,target=/workspace/cod-playlist,type=bind,consistency=cached"
+  ],
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=${containerWorkspaceFolder},type=bind,consistency=cached",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-toolsai.jupyter",
+        "ms-azuretools.vscode-docker",
+        "eamodio.gitlens",
+        "github.vscode-github-actions",
+        "mhutchie.git-graph"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/opt/conda/bin/python",
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "python.analysis.autoImportCompletions": true,
+        "python.analysis.typeCheckingMode": "basic"
+      }
+    }
+  },
+  "forwardPorts": [20540],
+  "postCreateCommand": "bash -lc 'echo Dev container ready; vipe --help >/dev/null 2>&1 || true'",
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": false,
+      "username": "app",
+      "userUid": 1000,
+      "userGid": 1000
+    },
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  }
+}
