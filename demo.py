@@ -6,6 +6,7 @@ from stream3r.models.components.utils.load_fn import load_and_preprocess_images
 
 from stream3r.models.components.utils.pose_enc import pose_encoding_to_extri_intri
 from stream3r.models.components.utils.geometry import unproject_depth_map_to_point_map
+from stream3r.utils.visual_utils import predictions_to_glb
 
 # added imports for PyAV-based frame extraction
 try:
@@ -15,6 +16,19 @@ except Exception as e:
 from PIL import Image
 import tempfile
 import shutil
+
+# ----------------------------
+# GLB export configuration
+# ----------------------------
+# If None, we’ll default to "All" later (to match your request).
+frame_filter = None
+conf_thres = 50.0
+mask_black_bg = False
+mask_white_bg = False
+show_cam = False
+mask_sky = False
+prediction_mode = "Predicted Pointmap"
+
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -27,9 +41,10 @@ tmp_dir = tempfile.mkdtemp(prefix="frames_")
 image_paths = []
 
 # extraction parameters
-max_frames = 64  # limit number of frames to preprocess
+max_frames = 100  # limit number of frames to preprocess
 target_fps = 1   # sample ~1 frame per second (adjust as needed)
 
+print(f"Extracting frames from {video_path}... @ {target_fps} FPS")
 try:
     container = av.open(video_path)
     stream = container.streams.video[0]
@@ -63,45 +78,88 @@ finally:
         shutil.rmtree(tmp_dir)
     except Exception:
         pass
+
+print(f"Extracted {len(images)} frames from {video_path}")
+print(f"Processing frames...")
+
+mode = "causal"
 # StreamSession supports KV cache management for both "causal" and "window" modes.
 session = StreamSession(model, mode="causal")
+# Where to drop GLB outputs (by default: alongside the video, in a subdir)
+video_stem = os.path.splitext(os.path.basename(video_path))[0]
+target_dir = os.path.join(os.path.dirname(video_path), f"{video_stem}_outputs")
+os.makedirs(target_dir, exist_ok=True)
 
 with torch.no_grad():
     # Process images one by one to simulate streaming inference
     for i in range(images.shape[0]):
-        image = images[i : i + 1]
-        predictions = session.forward_stream(image)
-
-        # Convert pose encoding to extrinsic and intrinsic matrices
+        image = images[i : i + 1].to(device)
+        outputs = session.forward_stream(image)
+        predictions = {}
+        for k, v in outputs.items():
+            if isinstance(v, torch.Tensor):
+                # detach and clone to produce an independent CPU tensor
+                predictions[k] = v.detach().cpu().clone()
+            else:
+                predictions[k] = v
+        # # Convert pose encoding to extrinsic and intrinsic matrices
         print("Converting pose encoding to extrinsic and intrinsic matrices...")
-        extrinsic, intrinsic = pose_encoding_to_extri_intri(predictions["pose_enc"], images.shape[-2:])
+        extrinsic, intrinsic = pose_encoding_to_extri_intri(
+            predictions["pose_enc"], images.shape[-2:]
+        )
         predictions["extrinsic"] = extrinsic
         predictions["intrinsic"] = intrinsic
 
         # Convert tensors to numpy
-        for key in predictions.keys():
+        for key in list(predictions.keys()):
             if isinstance(predictions[key], torch.Tensor):
                 predictions[key] = predictions[key].cpu().numpy().squeeze(0)  # remove batch dimension
-        predictions['pose_enc_list'] = None # remove pose_enc_list
+        predictions["pose_enc_list"] = None  # remove pose_enc_list
 
         # Generate world points from depth map
         print("Computing world points from depth map...")
         depth_map = predictions["depth"]  # (S, H, W, 1)
         world_points = unproject_depth_map_to_point_map(depth_map, predictions["extrinsic"], predictions["intrinsic"])
         predictions["world_points_from_depth"] = world_points
-        print(predictions.keys())
-        # points_array = np.array(pts_list)    # [N, 3]
-        # colors_array = np.array(cols_list)    # [N, 3]
-        # pc = np.concatenate([points_array, colors_array], axis=1)
-        # point_cloud = torch.from_numpy(pc).float()
-        # ply_path = os.path.join("./", "points.ply")
-        # print(f"Points passing confidence threshold: {conf_mask.sum()}")
-        # print(f"Percentage of points kept: {100 * conf_mask.sum() / conf_mask.size:.2f}%")
-
-        # print(f"Saving point cloud with {len(point_cloud)} points to {ply_path}")
-        # trimesh.PointCloud(points_array, colors=colors_array).export(ply_path)
+        # print(predictions.keys())
 
         # Clean up
         torch.cuda.empty_cache()
-        
+
+        # ----------------------------
+    # GLB export (requested block)
+    # ----------------------------
+    for key in predictions.keys():
+        if isinstance(predictions[key], torch.Tensor):
+            predictions[key] = predictions[key].cpu()
+
+    # Handle None frame_filter
+    if frame_filter is None:
+        frame_filter = "All"
+
+    # Build a GLB file name
+    glbfile = os.path.join(
+        target_dir,
+        f"glbscene_{conf_thres}_{frame_filter.replace('.', '_').replace(':', '').replace(' ', '_')}"
+        f"_maskb{mask_black_bg}_maskw{mask_white_bg}_cam{show_cam}"
+        f"_sky{mask_sky}_pred{prediction_mode.replace(' ', '_')}_mode{mode}.glb",
+    )
+    predictions["images"] = images.cpu().numpy()
+
+    # Convert predictions to GLB
+    glbscene = predictions_to_glb(
+        predictions,
+        conf_thres=conf_thres,
+        filter_by_frames=frame_filter,
+        mask_black_bg=mask_black_bg,
+        mask_white_bg=mask_white_bg,
+        show_cam=show_cam,
+        mask_sky=mask_sky,
+        target_dir=target_dir,
+        prediction_mode=prediction_mode,
+    )
+    glbscene.export(file_obj=glbfile)
+
+    print(".")
+
     session.clear()
