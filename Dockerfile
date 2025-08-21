@@ -44,5 +44,5 @@ USER ${USER_NAME}
 ENV PYTHONPATH=${APP_DIR}:$PYTHONPATH
 
 # Default command: run the demo (can be overridden at runtime)
-CMD ["python", "demo.py"]
+# CMD ["python", "demo.py"]
 

@@ -1,0 +1,28 @@
+name: owl-point-clouds
+
+resources:
+  image_id: us-central1-docker.pkg.dev/openworld-main/skypilot/stream3r:v0.1
+  accelerators: H200:1
+  cloud: kubernetes
+  cpus: 8+
+  memory: 24+
+
+workdir: .
+envs:
+  SPLITS_DIR: /mnt/data/ben/cod-yt-sliding-window/
+
+setup: |
+  echo "Setup phase (customize)."
+  mkdir stream3r && cd stream3r
+  git remote remove origin
+  git remote add origin https://github.com/Wayfarer-Labs/stream3r
+  git fetch
+  git submodule sync --recursive
+  git submodule update --init --recursive
+  git checkout --force origin/main
+
+run: |
+  echo "Starting run_mmap.sh at $(date)"
+  chmod +x scripts/run_mmap.sh || true
+  scripts/run_mmap.sh "$SPLITS_DIR"
+  echo "Done $(date)"
