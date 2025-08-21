@@ -18,6 +18,9 @@ setup: |
   git submodule sync --recursive
   git submodule update --init --recursive
   git checkout --force origin/main
+  cd stream3r
+  ls -1
+  test -f requirements.txt || { echo "requirements.txt missing"; exit 1; }
   pip install -r requirements.txt
 
 run: |
