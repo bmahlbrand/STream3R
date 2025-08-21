@@ -24,6 +24,9 @@ RUN apt-get update \
 		libsm6 \
 		libxrender1 \
 		libxext6 \
+		ssh \
+		rsync \
+    && update-ca-certificates \
 	&& rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user to run the app
