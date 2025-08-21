@@ -13,7 +13,7 @@ setup: |
   echo "Setup phase (customize)."
   mkdir stream3r && cd stream3r
   git remote remove origin
-  git remote add origin https://github.com/Wayfarer-Labs/stream3r
+  git remote add origin https://github.com/bmahlbrand/stream3r
   git fetch
   git submodule sync --recursive
   git submodule update --init --recursive
