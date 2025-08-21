@@ -26,12 +26,12 @@ RUN apt-get update \
 	&& rm -rf /var/lib/apt/lists/*
 
 # Copy repository into the image
-# COPY . /workspace
+COPY . /workspace
 
 # Upgrade pip and install Python dependencies if present, then install the project as a source module
 RUN python -m pip install --upgrade pip setuptools wheel \
     && python -m pip install -e git+https://github.com/NIRVANALAN/STream3R#egg=stream3r \
-	&& python -m pip install -r requirements.txt
+	&& python -m pip install -r /workspace/requirements.txt
 
 # Make sure python can import the local package
 # ENV PYTHONPATH=/workspace:$PYTHONPATH
