@@ -213,6 +213,7 @@ def resize_keep_aspect_set_width(x: torch.Tensor, target_w: int = 518) -> torch.
         x_in = x
     _, _, H, W = x_in.shape
     new_h = round(H * target_w / W)
+    new_h = (new_h // 14) * 14  # or +14 if you prefer rounding up
     resized = F.interpolate(
         x_in, size=(new_h, target_w), mode="bilinear", align_corners=False, antialias=True
     )
