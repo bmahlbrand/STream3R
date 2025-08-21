@@ -43,4 +43,4 @@ pyglet<2
 huggingface-hub[torch]>=0.22
 
 # --------- demo --------- #
-pyav
+av
