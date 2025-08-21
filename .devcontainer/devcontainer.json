@@ -1,5 +1,5 @@
 {
-  "name": "vipe-jam-dev",
+  "name": "stream3r-jam-dev",
   "build": {
     "dockerfile": "../Dockerfile",
     "context": "..",
