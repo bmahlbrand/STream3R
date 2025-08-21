@@ -1,4 +1,4 @@
-name: owl-point-clouds
+name: owl-stream3r
 
 resources:
   image_id: us-central1-docker.pkg.dev/openworld-main/skypilot/stream3r:v0.1
@@ -8,8 +8,6 @@ resources:
   # memory: 24+
 
 workdir: .
-envs:
-  SPLITS_DIR: /mnt/data/ben/cod-yt-sliding-window/
 
 setup: |
   echo "Setup phase (customize)."
@@ -24,5 +22,5 @@ setup: |
 run: |
   echo "Starting run_mmap.sh at $(date)"
   chmod +x scripts/run_mmap.sh || true
-  scripts/run_mmap.sh "$SPLITS_DIR"
+  scripts/run_mmap.sh /mnt/data/ben/cod-yt-sliding-window/
   echo "Done $(date)"

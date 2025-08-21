@@ -5,6 +5,10 @@ ARG USER_NAME=app
 ARG UID=1000
 ARG GID=1000
 
+ENV CUDA_HOME=/usr/local/cuda
+ENV PATH=${CUDA_HOME}/bin:${PATH}
+ENV LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}
+
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Install system dependencies, copy the workspace, then install Python deps
