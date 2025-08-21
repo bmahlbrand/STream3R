@@ -166,6 +166,58 @@ class ChunkedVideo:
                 out[pos] = ck[off].float() / 255.0
         return out
 
+# def square_and_resize(images: torch.Tensor, load_res: int) -> torch.Tensor:
+#     """Resize and pad images to square of size (load_res, load_res)."""
+#     square_images = []
+#     for img in images:
+#         c, h, w = img.shape
+#         # Scale to keep aspect ratio
+#         if h >= w:
+#             new_h = load_res
+#             new_w = max(1, int(w * load_res / h))
+#         else:
+#             new_w = load_res
+#             new_h = max(1, int(h * load_res / w))
+            
+#         # Make dimensions divisible by 14
+#         new_h = (new_h // 14) * 14
+#         new_w = (new_w // 14) * 14
+        
+#         img_resized = F.interpolate(
+#             img.unsqueeze(0), size=(new_h, new_w), mode="bilinear", align_corners=False
+#         ).squeeze(0)
+        
+#         # Pad to square
+#         pad_top = (load_res - new_h) // 2
+#         pad_bottom = load_res - new_h - pad_top
+#         pad_left = (load_res - new_w) // 2
+#         pad_right = load_res - new_w - pad_left
+        
+#         img_padded = F.pad(
+#             img_resized,
+#             (pad_left, pad_right, pad_top, pad_bottom),
+#             mode="constant",
+#             value=1.0,
+#         )
+#         square_images.append(img_padded)
+#     return torch.stack(square_images)
+def resize_keep_aspect_set_width(x: torch.Tensor, target_w: int = 518) -> torch.Tensor:
+    """
+    x: [C,H,W] or [B,C,H,W] float/uint8 tensor
+    Returns tensor resized so width = target_w, height scaled to keep aspect.
+    """
+    single = (x.dim() == 3)
+    if single:
+        x_in = x.unsqueeze(0)          # [1,C,H,W]
+    else:
+        x_in = x
+    _, _, H, W = x_in.shape
+    new_h = round(H * target_w / W)
+    resized = F.interpolate(
+        x_in, size=(new_h, target_w), mode="bilinear", align_corners=False, antialias=True
+    )
+    return resized.squeeze(0) if single else resized
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Run STream3R on a ChunkedVideo (mmap .pt chunks).")
@@ -195,7 +247,7 @@ if __name__ == "__main__":
     if not indices:
         raise SystemExit("No frames selected from ChunkedVideo")
 
-    images = cv.get_frames(indices).to(device)  # [T,3,H,W] float32 in [0,1]
+    images = resize_keep_aspect_set_width(cv.get_frames(indices).to(device))  # [T,3,H,W] float32 in [0,1]
     print(f"Loaded {images.shape[0]} frames from {splits_path} (device={device})")
 
     # run streaming inference frame-by-frame to simulate original demo behavior
