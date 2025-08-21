@@ -4,8 +4,8 @@ resources:
   image_id: us-central1-docker.pkg.dev/openworld-main/skypilot/stream3r:v0.1
   accelerators: H200:1
   cloud: kubernetes
-  cpus: 8+
-  memory: 24+
+  # cpus: 8+
+  # memory: 24+
 
 workdir: .
 envs:
